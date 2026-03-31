@@ -1,66 +1,161 @@
-import cv2
 import os
-import pickle
-import face_recognition
-
-ENCODINGS_FILE = "data/encodings.pkl"
+import cv2
 
 
-def load_existing_data():
-    if os.path.exists(ENCODINGS_FILE):
-        with open(ENCODINGS_FILE, "rb") as file:
-            return pickle.load(file)
-    return {"names": [], "encodings": []}
+DATASET_DIR = "dataset"
+IMAGE_SIZE = (224, 224)
+MAX_IMAGES = 30
 
 
-def save_data(data):
-    with open(ENCODINGS_FILE, "wb") as file:
-        pickle.dump(data, file)
+def create_person_folder(person_name):
+    person_folder = os.path.join(DATASET_DIR, person_name)
+    os.makedirs(person_folder, exist_ok=True)
+    return person_folder
 
 
-def enroll_from_webcam():
-    name = input("Enter person's name: ").strip()
+def get_next_image_index(folder_path):
+    existing_files = [
+        file for file in os.listdir(folder_path)
+        if file.lower().endswith(".jpg")
+    ]
 
-    video = cv2.VideoCapture(0)
+    if not existing_files:
+        return 1
 
-    print("Press SPACE to capture face")
-    print("Press Q to quit")
+    numbers = []
+    for file in existing_files:
+        try:
+            number = int(os.path.splitext(file)[0])
+            numbers.append(number)
+        except ValueError:
+            continue
+
+    return max(numbers, default=0) + 1
+
+
+def main():
+    os.makedirs(DATASET_DIR, exist_ok=True)
+
+    person_name = input("Enter person's name: ").strip()
+
+    if not person_name:
+        print("Name cannot be empty.")
+        return
+
+    person_folder = create_person_folder(person_name)
+    next_index = get_next_image_index(person_folder)
+
+    face_cascade = cv2.CascadeClassifier(
+        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    )
+
+    webcam = cv2.VideoCapture(0)
+
+    if not webcam.isOpened():
+        print("Could not access webcam.")
+        return
+
+    print("\nEnrollment started.")
+    print("Rules:")
+    print("- Only one face should appear")
+    print("- Keep your face front-facing")
+    print("- Press SPACE to save an image")
+    print("- Press Q to quit\n")
+
+    saved_count = 0
 
     while True:
-        ret, frame = video.read()
+        ret, frame = webcam.read()
         if not ret:
-            print("Failed to access camera")
+            print("Failed to capture frame.")
             break
 
-        cv2.imshow("Enrollment - Knock Knock!", frame)
+        display_frame = frame.copy()
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        key = cv2.waitKey(1)
+        faces = face_cascade.detectMultiScale(
+            gray,
+            scaleFactor=1.2,
+            minNeighbors=5,
+            minSize=(100, 100)
+        )
 
-        if key == ord(" "):  # SPACE to capture
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        status_text = "No face detected"
+        status_color = (0, 0, 255)
 
-            face_locations = face_recognition.face_locations(rgb_frame)
+        if len(faces) == 1:
+            (x, y, w, h) = faces[0]
+            cv2.rectangle(display_frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            status_text = "One face detected"
+            status_color = (0, 255, 0)
 
-            if len(face_locations) != 1:
-                print("Make sure exactly one face is visible.")
+        elif len(faces) > 1:
+            status_text = "Multiple faces detected"
+            status_color = (0, 0, 255)
+
+            for (x, y, w, h) in faces:
+                cv2.rectangle(display_frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+
+        cv2.putText(
+            display_frame,
+            f"Saved: {saved_count}/{MAX_IMAGES}",
+            (20, 30),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            (255, 255, 255),
+            2
+        )
+
+        cv2.putText(
+            display_frame,
+            status_text,
+            (20, 65),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            status_color,
+            2
+        )
+
+        cv2.imshow("Knock Knock! Enrollment", display_frame)
+
+        key = cv2.waitKey(1) & 0xFF
+
+        if key == ord(" "):
+            if len(faces) != 1:
+                print("Exactly one front-facing face is required.")
                 continue
 
-            encoding = face_recognition.face_encodings(rgb_frame, face_locations)[0]
+            (x, y, w, h) = faces[0]
 
-            data = load_existing_data()
-            data["names"].append(name)
-            data["encodings"].append(encoding)
-            save_data(data)
+            face_crop = frame[y:y + h, x:x + w]
 
-            print(f"{name} enrolled successfully!")
-            break
+            if face_crop.size == 0:
+                print("Invalid crop. Try again.")
+                continue
+
+            resized_face = cv2.resize(face_crop, IMAGE_SIZE)
+
+            file_name = f"{next_index:03d}.jpg"
+            save_path = os.path.join(person_folder, file_name)
+
+            cv2.imwrite(save_path, resized_face)
+
+            print(f"Saved: {save_path}")
+
+            saved_count += 1
+            next_index += 1
+
+            if saved_count >= MAX_IMAGES:
+                print(f"\nEnrollment complete. {MAX_IMAGES} images saved for {person_name}.")
+                break
 
         elif key == ord("q"):
+            print("\nEnrollment stopped by user.")
             break
 
-    video.release()
+    webcam.release()
     cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
-    enroll_from_webcam()
+    main()
