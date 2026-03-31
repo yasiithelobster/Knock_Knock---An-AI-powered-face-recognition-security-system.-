@@ -1,0 +1,138 @@
+body.dark-body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #0b1320, #12233d);
+    color: #f5ecd9;
+    min-height: 100vh;
+}
+
+.container {
+    width: 90%;
+    max-width: 700px;
+    margin: 60px auto;
+    text-align: center;
+}
+
+.small-card {
+    max-width: 420px;
+    background: rgba(15, 24, 40, 0.95);
+    padding: 40px 30px;
+    border-radius: 18px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.logs-card {
+    max-width: 900px;
+}
+
+h1 {
+    font-size: 3rem;
+    margin-bottom: 10px;
+    color: #f8f6f0;
+}
+
+.subtitle {
+    font-size: 1.1rem;
+    color: #d8c9a7;
+    margin-bottom: 30px;
+}
+
+.button-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+}
+
+.nav-button,
+button {
+    display: inline-block;
+    width: 320px;
+    padding: 15px 20px;
+    background: #1e3a5f;
+    color: #f8f6f0;
+    text-decoration: none;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.nav-button:hover,
+button:hover {
+    background: #28527a;
+    transform: translateY(-1px);
+}
+
+.secondary {
+    background: #2f2f2f;
+}
+
+.secondary:hover {
+    background: #444444;
+}
+
+.form-box {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+}
+
+input {
+    width: 320px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid #2b4464;
+    background: #101b2a;
+    color: #f8f6f0;
+    font-size: 1rem;
+    outline: none;
+}
+
+input::placeholder {
+    color: #9aa8bb;
+}
+
+.flash {
+    width: 320px;
+    margin: 0 auto 18px auto;
+    padding: 12px 15px;
+    border-radius: 10px;
+    font-size: 0.95rem;
+}
+
+.flash.success {
+    background: #1d4d3f;
+    color: #dff7ef;
+}
+
+.flash.error {
+    background: #5b2525;
+    color: #ffe6e6;
+}
+
+.logs-box {
+    background: #101b2a;
+    color: #f5ecd9;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: left;
+    white-space: pre-wrap;
+    overflow-x: auto;
+    min-height: 300px;
+}
+
+.back-link {
+    display: inline-block;
+    margin-top: 20px;
+    color: #d8c9a7;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.back-link:hover {
+    color: #f8f6f0;
+}
