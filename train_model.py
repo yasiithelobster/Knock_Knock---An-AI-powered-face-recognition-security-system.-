@@ -12,13 +12,14 @@ from tensorflow.keras.layers import (
     Input,
     Conv2D,
     MaxPooling2D,
-    Flatten,
     Dense,
     Dropout,
-    BatchNormalization
+    BatchNormalization,
+    GlobalAveragePooling2D
 )
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.regularizers import l2
 
 
 DATASET_DIR = "dataset"
@@ -28,10 +29,10 @@ OUTPUT_DIR = "outputs"
 MODEL_PATH = os.path.join(MODEL_DIR, "face_classifier.keras")
 LABEL_MAP_PATH = os.path.join(MODEL_DIR, "label_map.json")
 
-IMAGE_SIZE = (224, 224)
+IMAGE_SIZE = (128, 128)
 TEST_SIZE = 0.2
 RANDOM_STATE = 42
-EPOCHS = 25
+EPOCHS = 30
 BATCH_SIZE = 16
 
 
@@ -78,10 +79,13 @@ def load_dataset():
                 continue
 
             image = cv2.resize(image, IMAGE_SIZE)
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            image = image.astype("float32") / 255.0
 
-            images.append(image)
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            gray = gray.astype("float32") / 255.0
+
+            gray = np.expand_dims(gray, axis=-1)
+
+            images.append(gray)
             labels.append(current_label)
 
         current_label += 1
@@ -94,37 +98,38 @@ def load_dataset():
 
 def build_model(num_classes):
     model = Sequential([
-        Input(shape=(IMAGE_SIZE[0], IMAGE_SIZE[1], 3)),
+        Input(shape=(IMAGE_SIZE[0], IMAGE_SIZE[1], 1)),
 
-        Conv2D(32, (3, 3), activation="relu", padding="same"),
+        Conv2D(32, (3, 3), activation="relu", padding="same", kernel_regularizer=l2(0.001)),
         BatchNormalization(),
         MaxPooling2D(pool_size=(2, 2)),
+        Dropout(0.2),
 
-        Conv2D(64, (3, 3), activation="relu", padding="same"),
+        Conv2D(64, (3, 3), activation="relu", padding="same", kernel_regularizer=l2(0.001)),
         BatchNormalization(),
         MaxPooling2D(pool_size=(2, 2)),
+        Dropout(0.25),
 
-        Conv2D(128, (3, 3), activation="relu", padding="same"),
+        Conv2D(128, (3, 3), activation="relu", padding="same", kernel_regularizer=l2(0.001)),
         BatchNormalization(),
         MaxPooling2D(pool_size=(2, 2)),
-
-        Conv2D(256, (3, 3), activation="relu", padding="same"),
-        BatchNormalization(),
-        MaxPooling2D(pool_size=(2, 2)),
-
-        Flatten(),
-
-        Dense(256, activation="relu"),
-        Dropout(0.5),
-
-        Dense(128, activation="relu"),
         Dropout(0.3),
+
+        Conv2D(256, (3, 3), activation="relu", padding="same", kernel_regularizer=l2(0.001)),
+        BatchNormalization(),
+        MaxPooling2D(pool_size=(2, 2)),
+        Dropout(0.3),
+
+        GlobalAveragePooling2D(),
+
+        Dense(128, activation="relu", kernel_regularizer=l2(0.001)),
+        Dropout(0.4),
 
         Dense(num_classes, activation="softmax")
     ])
 
     model.compile(
-        optimizer="adam",
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
         loss="sparse_categorical_crossentropy",
         metrics=["accuracy"]
     )
@@ -165,7 +170,7 @@ def plot_training_history(history):
     plt.close()
 
 
-def plot_confusion_matrix(y_true, y_pred, label_map):
+def plot_confusion(y_true, y_pred, label_map):
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     class_names = [label_map[i] for i in sorted(label_map.keys())]
@@ -178,6 +183,26 @@ def plot_confusion_matrix(y_true, y_pred, label_map):
     plt.tight_layout()
     plt.savefig(os.path.join(OUTPUT_DIR, "confusion_matrix.png"))
     plt.close()
+
+
+def print_confusion_pairs(y_true, y_pred, label_map):
+    cm = confusion_matrix(y_true, y_pred)
+    class_names = [label_map[i] for i in sorted(label_map.keys())]
+
+    print("\nMain Misclassification Clues:")
+    found_any = False
+
+    for true_idx in range(len(class_names)):
+        for pred_idx in range(len(class_names)):
+            if true_idx != pred_idx and cm[true_idx][pred_idx] > 0:
+                print(
+                    f"  True: {class_names[true_idx]} -> Predicted: {class_names[pred_idx]} "
+                    f"({cm[true_idx][pred_idx]} samples)"
+                )
+                found_any = True
+
+    if not found_any:
+        print("  No cross-person confusion found in validation predictions.")
 
 
 def main():
@@ -206,12 +231,11 @@ def main():
     print(f"Validation samples: {len(X_val)}")
 
     train_datagen = ImageDataGenerator(
-        rotation_range=10,
-        width_shift_range=0.08,
-        height_shift_range=0.08,
-        zoom_range=0.1,
-        brightness_range=(0.9, 1.1),
-        horizontal_flip=False
+        rotation_range=8,
+        width_shift_range=0.05,
+        height_shift_range=0.05,
+        zoom_range=0.08,
+        brightness_range=(0.95, 1.05)
     )
 
     val_datagen = ImageDataGenerator()
@@ -234,14 +258,14 @@ def main():
 
     early_stopping = EarlyStopping(
         monitor="val_loss",
-        patience=5,
+        patience=6,
         restore_best_weights=True
     )
 
     reduce_lr = ReduceLROnPlateau(
         monitor="val_loss",
         factor=0.5,
-        patience=2,
+        patience=3,
         min_lr=1e-6,
         verbose=1
     )
@@ -266,12 +290,14 @@ def main():
     predictions = model.predict(X_val, verbose=0)
     y_pred = np.argmax(predictions, axis=1)
 
-    print("\nClassification Report:")
     target_names = [label_map[i] for i in sorted(label_map.keys())]
+
+    print("\nClassification Report:")
     print(classification_report(y_val, y_pred, target_names=target_names))
 
+    print_confusion_pairs(y_val, y_pred, label_map)
     plot_training_history(history)
-    plot_confusion_matrix(y_val, y_pred, label_map)
+    plot_confusion(y_val, y_pred, label_map)
 
     print(f"\nModel saved to: {MODEL_PATH}")
     print(f"Label map saved to: {LABEL_MAP_PATH}")
