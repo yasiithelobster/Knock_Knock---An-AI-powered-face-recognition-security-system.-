@@ -1,8 +1,8 @@
+import cv2
 import os
 import pickle
 import face_recognition
 
-KNOWN_FACES_DIR = "data/known_faces"
 ENCODINGS_FILE = "data/encodings.pkl"
 
 
@@ -18,36 +18,49 @@ def save_data(data):
         pickle.dump(data, file)
 
 
-def enroll_face():
-    os.makedirs(KNOWN_FACES_DIR, exist_ok=True)
+def enroll_from_webcam():
+    name = input("Enter person's name: ").strip()
 
-    person_name = input("Enter person's name: ").strip()
-    image_path = input("Enter image path: ").strip().strip('"').strip("'")
+    video = cv2.VideoCapture(0)
 
-    if not os.path.exists(image_path):
-        print("Image file not found.")
-        return
+    print("Press SPACE to capture face")
+    print("Press Q to quit")
 
-    image = face_recognition.load_image_file(image_path)
-    face_locations = face_recognition.face_locations(image)
+    while True:
+        ret, frame = video.read()
+        if not ret:
+            print("Failed to access camera")
+            break
 
-    if len(face_locations) == 0:
-        print("No face found in the image.")
-        return
+        cv2.imshow("Enrollment - Knock Knock!", frame)
 
-    if len(face_locations) > 1:
-        print("More than one face found. Please use an image with only one face.")
-        return
+        key = cv2.waitKey(1)
 
-    face_encoding = face_recognition.face_encodings(image, face_locations)[0]
+        if key == ord(" "):  # SPACE to capture
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    data = load_existing_data()
-    data["names"].append(person_name)
-    data["encodings"].append(face_encoding)
-    save_data(data)
+            face_locations = face_recognition.face_locations(rgb_frame)
 
-    print(f"{person_name} enrolled successfully.")
+            if len(face_locations) != 1:
+                print("Make sure exactly one face is visible.")
+                continue
+
+            encoding = face_recognition.face_encodings(rgb_frame, face_locations)[0]
+
+            data = load_existing_data()
+            data["names"].append(name)
+            data["encodings"].append(encoding)
+            save_data(data)
+
+            print(f"{name} enrolled successfully!")
+            break
+
+        elif key == ord("q"):
+            break
+
+    video.release()
+    cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
-    enroll_face()
+    enroll_from_webcam()
