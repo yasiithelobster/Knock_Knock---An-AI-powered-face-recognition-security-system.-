@@ -1,4 +1,5 @@
 import os
+import sys
 import cv2
 
 
@@ -33,10 +34,17 @@ def get_next_image_index(folder_path):
     return max(numbers, default=0) + 1
 
 
+def get_person_name():
+    if len(sys.argv) > 1:
+        return sys.argv[1].strip()
+
+    return input("Enter person's name: ").strip()
+
+
 def main():
     os.makedirs(DATASET_DIR, exist_ok=True)
 
-    person_name = input("Enter person's name: ").strip()
+    person_name = get_person_name()
 
     if not person_name:
         print("Name cannot be empty.")
@@ -55,7 +63,7 @@ def main():
         print("Could not access webcam.")
         return
 
-    print("\nEnrollment started.")
+    print(f"\nEnrollment started for: {person_name}")
     print("Rules:")
     print("- Only one face should appear")
     print("- Keep your face front-facing")
