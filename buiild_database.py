@@ -34,14 +34,27 @@ def log_access(name, status, distance):
 def find_best_match(live_embedding, database):
     best_name = "Unknown"
     best_distance = float("inf")
+    person_best_distances = {}
 
     for person_name, person_data in database.items():
-        mean_embedding = person_data["mean_embedding"]
-        distance = np.linalg.norm(live_embedding - mean_embedding)
+        stored_embeddings = person_data["embeddings"]
+        min_distance_for_person = float("inf")
 
-        if distance < best_distance:
-            best_distance = distance
+        for stored_embedding in stored_embeddings:
+            distance = np.linalg.norm(live_embedding - stored_embedding)
+
+            if distance < min_distance_for_person:
+                min_distance_for_person = distance
+
+        person_best_distances[person_name] = min_distance_for_person
+
+        if min_distance_for_person < best_distance:
+            best_distance = min_distance_for_person
             best_name = person_name
+
+    print("\nClosest distances by person:")
+    for person_name, distance in sorted(person_best_distances.items(), key=lambda x: x[1]):
+        print(f"{person_name}: {distance:.4f}")
 
     if best_distance < MATCH_THRESHOLD:
         return best_name, "Access Granted", best_distance
