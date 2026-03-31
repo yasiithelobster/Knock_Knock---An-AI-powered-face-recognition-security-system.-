@@ -1,4 +1,4 @@
-setuptools<81
 opencv-python
-face_recognition
 numpy
+tensorflow
+scikit-learn
