@@ -43,15 +43,16 @@ The system follows this pipeline:
 Enrollment → Dataset → Embedding Database → Live Recognition → Access Decision → Logging
 ```
 
-1. Enrollment
+## 1. Enrollment
 - Admin registers a person
 - System captures ~30 face images
 - Images stored in:
 ```
 dataset/<person_name>/
 ```
+---
 
-2. Database Rebuild
+## 2. Database Rebuild
 - All images are processed
 - Faces are converted into embeddings
 - Stored in:
