@@ -6,6 +6,14 @@ Knock Knock! is an AI-powered security system that uses facial recognition to co
 
 ---
 
+## 🎬 Demo
+
+<video src="demo/knock_knock_linkedin.mp4" controls width="720"></video>
+
+▶️ [Watch the demo video](demo/knock_knock_linkedin.mp4)
+
+---
+
 ## 🌟 Features
 
 - 🔑 Admin-Protected Dashboard
@@ -122,6 +130,8 @@ Knock_Knock/
 ├── logs/
 │   └── access_log.txt
 ├── outputs/                # Training visuals (optional)
+├── demo/
+│   └── knock_knock_linkedin.mp4
 ├── templates/              # HTML pages
 ├── static/                 # CSS styling
 ├── app.py                  # Face recognition (access gate)
@@ -203,17 +213,3 @@ SECRET_KEY = "knock_knock_secret_2026"
 
 Developed by **Yasiru Athauda**
 📧 yasirudilmith34@gmail.com
-
-
-
-
-
-
-
-
-
-
-
-
-
-
